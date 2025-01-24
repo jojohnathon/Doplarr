@@ -10,7 +10,8 @@
    [doplarr.interaction-state-machine :as ism]
    [doplarr.state :as state]
    [taoensso.timbre :refer [debug fatal info] :as timbre]
-   [taoensso.timbre.tools.logging :as tlog])
+   [taoensso.timbre.tools.logging :as tlog]
+   [clj-http.client :as http])
   (:gen-class))
 
 ; Pipe tools.logging to timbre
@@ -70,9 +71,21 @@
   (timbre/merge-config! {:min-level [[#{"*"} (:log-level @state/config :info)]]
                          :output-fn (partial timbre/default-output-fn {:stacktrace-fonts {}})}))
 
+(defn fetch-api-data []
+  (let [url "https://sonarr.johnathon.club/api/v3/log?page=1&pageSize=10&sortDirection=descending"
+        headers {"accept" "application/json"
+                 "X-Api-Key" (:sonarr/api @state/config)}]
+    (a/go-loop []
+      (let [response (<! (http/get url {:headers headers}))]
+        (when (= 200 (:status response))
+          (swap! state/updated-data assoc :data (:body response))))
+      (<! (a/timeout 300000)) ; 5 minutes
+      (recur))))
+
 (defn startup! []
   (setup-config!)
-  (start-bot!))
+  (start-bot!)
+  (fetch-api-data))
 
 ; Program Entry Point
 (defn -main
