@@ -7,3 +7,5 @@
 (def discord (atom nil))
 
 (def config (atom nil))
+
+(def updated-data (atom nil))

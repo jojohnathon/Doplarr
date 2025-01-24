@@ -6,7 +6,8 @@
    [discljord.messaging :as m]
    [doplarr.utils :as utils]
    [fmnoise.flow :as flow :refer [else]]
-   [taoensso.timbre :refer [fatal]]))
+   [taoensso.timbre :refer [fatal]]
+   [doplarr.state :as state]))
 
 (defn request-command [media-types]
   {:name "request"
@@ -140,10 +141,14 @@
                                        (request-button format uuid))}]})
 
 (defn request-performed-plain [payload media-type user-id]
-  {:content
-   (str "<@" user-id "> your request for the "
-        (name media-type) " `" (:title payload) " (" (:year payload) ")"
-        "` has been received!")})
+  (let [logger (:logger payload)
+        message (:message payload)
+        log-message (str logger "\n" message)]
+    {:content
+     (str "<@" user-id "> your request for the "
+          (name media-type) " `" (:title payload) " (" (:year payload) ")"
+          "` has been received!\n"
+          log-message)}))
 
 (defn request-performed-embed [embed-data user-id]
   {:content (str "<@" user-id "> has requested:")
@@ -155,3 +160,8 @@
          messaging bot-id guild-id
          [(request-command media-types)])
        (else #(fatal % "Error in registering commands"))))
+
+(defn update-interaction-response! [token bot-id messaging]
+  (let [updated-data @state/updated-data]
+    (m/edit-original-interaction-response! messaging bot-id token
+                                           {:content (str "Updated data: " updated-data)})))
